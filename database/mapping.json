@@ -1,0 +1,66 @@
+{
+  "tables": [
+    {
+      "name": "road_segments",
+      "type": "linestring",
+      "mapping": {
+        "highway": [
+          "motorway",
+          "motorway_link",
+          "trunk",
+          "trunk_link",
+          "primary",
+          "primary_link",
+          "secondary",
+          "secondary_link",
+          "tertiary",
+          "tertiary_link",
+          "residential",
+          "unclassified",
+          "service",
+          "living_street",
+          "road"
+        ]
+      },
+      "columns": [
+        {"name": "osm_id", "type": "id"},
+        {"name": "geometry", "type": "geometry"},
+        {"name": "highway_type", "type": "string", "key": "highway"},
+        {"name": "name", "type": "string", "key": "name"},
+        {"name": "max_speed", "type": "int", "key": "maxspeed"},
+        {"name": "lanes", "type": "int", "key": "lanes"},
+        {"name": "is_oneway", "type": "bool", "key": "oneway"},
+        {"name": "surface", "type": "string", "key": "surface"},
+        {"name": "bridge", "type": "bool", "key": "bridge"},
+        {"name": "tunnel", "type": "bool", "key": "tunnel"}
+      ]
+    },
+    {
+      "name": "pois",
+      "type": "point",
+      "mapping": {
+        "amenity": [
+          "hospital",
+          "clinic",
+          "fire_station",
+          "police",
+          "pharmacy",
+          "fuel",
+          "parking",
+          "bus_station",
+          "taxi"
+        ],
+        "emergency": "__all__",
+        "highway": ["bus_stop", "traffic_signals", "crossing", "speed_camera"]
+      },
+      "columns": [
+        {"name": "osm_id", "type": "id"},
+        {"name": "geometry", "type": "geometry"},
+        {"name": "type", "type": "string", "key": "amenity"},
+        {"name": "subtype", "type": "string", "key": "emergency"},
+        {"name": "name", "type": "string", "key": "name"},
+        {"name": "operator", "type": "string", "key": "operator"}
+      ]
+    }
+  ]
+}

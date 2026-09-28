@@ -1,0 +1,38 @@
+name: ml-pipeline
+channels:
+  - pytorch
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pytorch=2.2
+  - torchvision=0.17
+  - torchaudio=2.2
+  - pandas=2.2
+  - numpy=1.26
+  - scikit-learn=1.4
+  - fastapi=0.109
+  - uvicorn=0.27
+  - redis=5.0
+  - kafka-python=2.0
+  - sqlalchemy=2.0
+  - psycopg2=2.9
+  - geoalchemy2=0.14
+  - pydantic=2.6
+  - pydantic-settings=2.2
+  - python-dotenv=1.0
+  - prometheus-client=0.19
+  - pip=24.0
+  - pip:
+    - torch-geometric==2.5.0
+    - torch-scatter==2.1.2
+    - torch-sparse==0.6.18
+    - torch-cluster==1.6.3
+    - torch-spline-conv==1.2.2
+    - mlflow==2.9
+    - dvc==3.44
+    - black==24.3
+    - ruff==0.3
+    - mypy==1.8
+    - pytest==8.0
+    - pytest-asyncio==0.23

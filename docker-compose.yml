@@ -1,0 +1,217 @@
+version: '3.8'
+
+services:
+  # Core Infrastructure
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_DB: aegisroad
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-aegisroad_dev}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/migrations:/docker-entrypoint-initdb.d
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis -d aegisroad"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports: ["6379:6379"]
+    volumes: [redis_data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    ports: ["9092:9092"]
+    depends_on: [zookeeper]
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  nats:
+    image: nats:2.10-alpine
+    ports: ["4222:4222", "8222:8222"]
+    command: ["-js", "-m", "8222"]
+
+  # Map Tiles (OpenMapTiles)
+  tileserver:
+    image: maptiler/tileserver-gl:latest
+    volumes:
+      - ./data/tiles:/data
+      - ./config/tileserver.json:/config.json
+    ports: ["8080:80"]
+    profiles: ["tiles"]
+
+  # Application Services (build from source)
+  routing-engine:
+    build:
+      context: ./services/routing-engine
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://aegis:${DB_PASSWORD:-aegisroad_dev}@postgres:5432/aegisroad
+      OSRM_PROFILE: /profiles/emergency.lua
+      RUST_LOG: info
+    ports: ["50051:50051"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./services/routing-engine/profiles:/profiles:ro
+    profiles: ["backend"]
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://aegis:${DB_PASSWORD:-aegisroad_dev}@postgres:5432/aegisroad
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:9092
+      ROUTING_GRPC_ADDR: routing-engine:50051
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_in_prod}
+      GIN_MODE: debug
+    ports: ["8081:8081", "9090:9090"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      routing-engine:
+        condition: service_started
+    profiles: ["backend"]
+
+  realtime-server:
+    build:
+      context: ./services/realtime-server
+      dockerfile: Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+      NATS_URL: nats://nats:4222
+      KAFKA_BROKERS: kafka:9092
+      PORT: 3001
+    ports: ["3001:3001"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      kafka:
+        condition: service_healthy
+    profiles: ["backend"]
+
+  scats-emulator:
+    build:
+      context: ./services/scats-emulator
+      dockerfile: Dockerfile
+    environment:
+      REDIS_URL: redis://redis:6379
+      KAFKA_BROKERS: kafka:9092
+      PORT: 8082
+    ports: ["8082:8082"]
+    depends_on:
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    profiles: ["backend"]
+
+  ml-pipeline:
+    build:
+      context: ./services/ml-pipeline
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgres://aegis:${DB_PASSWORD:-aegisroad_dev}@postgres:5432/aegisroad
+      KAFKA_BROKERS: kafka:9092
+      MODEL_STORE: /models
+      PYTHONPATH: /app
+    volumes:
+      - ml_models:/models
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    profiles: ["backend", "ml"]
+
+  # Frontend (hot reload)
+  public-pwa:
+    build:
+      context: ./apps/public-pwa
+      dockerfile: Dockerfile.dev
+    command: npm run dev -- --host 0.0.0.0 --port 5173
+    ports: ["5173:5173"]
+    volumes:
+      - ./apps/public-pwa:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8081
+      VITE_WS_URL: ws://localhost:3001
+      VITE_TILE_URL: http://localhost:8080
+    profiles: ["frontend"]
+
+  emergency-app:
+    build:
+      context: ./apps/emergency-app
+      dockerfile: Dockerfile.dev
+    command: npm run dev -- --host 0.0.0.0 --port 5174
+    ports: ["5174:5174"]
+    volumes:
+      - ./apps/emergency-app:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8081
+      VITE_WS_URL: ws://localhost:3001
+      VITE_TILE_URL: http://localhost:8080
+    profiles: ["frontend"]
+
+  operator-dashboard:
+    build:
+      context: ./apps/operator-dashboard
+      dockerfile: Dockerfile.dev
+    command: npm run dev -- --host 0.0.0.0 --port 5175
+    ports: ["5175:5175"]
+    volumes:
+      - ./apps/operator-dashboard:/app
+      - /app/node_modules
+    environment:
+      VITE_API_URL: http://localhost:8081
+      VITE_WS_URL: ws://localhost:3001
+      VITE_TILE_URL: http://localhost:8080
+    profiles: ["frontend"]
+
+volumes:
+  postgres_data:
+  redis_data:
+  ml_models:
+
+networks:
+  default:
+    name: aegisroad-network

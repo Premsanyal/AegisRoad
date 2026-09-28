@@ -1,0 +1,44 @@
+name: 'Setup Tools'
+description: 'Install Rust, Go, Node.js, Python and common tools'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+
+    - name: Setup Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.22'
+        cache: true
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: Install common tools
+      shell: bash
+      run: |
+        # Install golangci-lint
+        curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.0
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+        # Install cargo tools
+        cargo install cargo-nextest --locked
+
+        # Install Python tools
+        pip install --upgrade pip
+        pip install black ruff mypy pytest pytest-asyncio
+
+        # Install Node tools globally
+        npm install -g pnpm typescript prettier eslint

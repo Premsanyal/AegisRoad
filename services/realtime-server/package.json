@@ -1,0 +1,29 @@
+{
+  "name": "realtime-server",
+  "version": "1.0.0",
+  "description": "Real-time WebSocket server for AegisRoad",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "socket.io": "^4.7.2",
+    "ioredis": "^5.3.2",
+    "nats.ws": "^1.20.0",
+    "kafkajs": "^2.2.4",
+    "zod": "^3.22.4",
+    "pino": "^8.16.2",
+    "pino-pretty": "^10.2.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vitest": "^1.1.0",
+    "eslint": "^8.56.0",
+    "@types/node": "^20.10.6"
+  }
+}
