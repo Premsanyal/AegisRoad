@@ -1,11 +1,11 @@
 -- 002_schema.sql
 -- Core schema for AegisRoad traffic management system
+-- Using PostGIS 3+ geometry syntax: geometry(GEOMETRY_TYPE, SRID)
 
--- Road network segments (from OSM)
+-- Road network segments (from OSM) - using osm_id as primary key
 CREATE TABLE road_segments (
-    id BIGSERIAL PRIMARY KEY,
-    osm_id BIGINT UNIQUE NOT NULL,
-    geometry LINESTRING(4326) NOT NULL,
+    osm_id BIGINT PRIMARY KEY,
+    geometry geometry(LINESTRING, 4326) NOT NULL,
     highway_type TEXT NOT NULL,           -- motorway, primary, secondary, tertiary, residential, etc.
     name TEXT,
     max_speed INT DEFAULT 50,             -- km/h
@@ -21,7 +21,7 @@ CREATE TABLE road_segments (
 
 -- Live traffic speeds (from APIs + crowdsourcing)
 CREATE TABLE traffic_speeds (
-    segment_id BIGINT NOT NULL REFERENCES road_segments(id) ON DELETE CASCADE,
+    segment_id BIGINT NOT NULL REFERENCES road_segments(osm_id) ON DELETE CASCADE,
     speed_kmh REAL NOT NULL,
     confidence REAL DEFAULT 1.0,          -- 0-1 data quality
     source TEXT NOT NULL,                 -- 'tomtom', 'here', 'crowd', 'sensor', 'ml'
@@ -29,15 +29,15 @@ CREATE TABLE traffic_speeds (
     PRIMARY KEY (segment_id, timestamp)
 );
 
--- Convert to hypertable for time-series optimization
-SELECT create_hypertable('traffic_speeds', 'timestamp', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE);
+-- TimescaleDB hypertable (commented out for PostGIS-only image)
+-- SELECT create_hypertable('traffic_speeds', 'timestamp', chunk_time_interval => INTERVAL '1 day', if_not_exists => TRUE);
 
 -- Incidents (accidents, breakdowns, construction, events)
 CREATE TABLE incidents (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     type TEXT NOT NULL,                   -- accident, breakdown, construction, flood, event, hazard
     severity INT NOT NULL DEFAULT 1,      -- 1-5 (5=critical)
-    geometry POINT(4326) NOT NULL,
+    geometry geometry(POINT, 4326) NOT NULL,
     affected_segments BIGINT[] DEFAULT '{}',
     description TEXT,
     reported_by TEXT NOT NULL,            -- 'operator', 'public', 'sensor', 'ml', 'camera'
@@ -56,10 +56,10 @@ CREATE TABLE vehicles (
     type TEXT NOT NULL,                   -- 'public', 'ambulance', 'fire', 'police', 'vip', 'operator'
     registration TEXT UNIQUE,
     callsign TEXT,                        -- for emergency: "AMB-001", "ENG-05"
-    current_location GEOGRAPHY(POINT, 4326),
+    current_location geography(POINT, 4326),
     heading REAL,                         -- degrees 0-360
     speed_kmh REAL DEFAULT 0,
-    destination GEOGRAPHY(POINT, 4326),
+    destination geography(POINT, 4326),
     current_route JSONB,                  -- GeoJSON LineString with metadata
     alternative_routes JSONB[],           -- array of backup routes
     priority_level INT DEFAULT 0,         -- 0=public, 1=high, 2=emergency, 3=vip
@@ -93,8 +93,8 @@ CREATE TABLE route_requests (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id),
     vehicle_id UUID REFERENCES vehicles(id),
-    origin GEOGRAPHY(POINT, 4326) NOT NULL,
-    destination GEOGRAPHY(POINT, 4326) NOT NULL,
+    origin geography(POINT, 4326) NOT NULL,
+    destination geography(POINT, 4326) NOT NULL,
     priority_level INT NOT NULL DEFAULT 0,
     assigned_route JSONB,                   -- GeoJSON LineString
     alternative_routes JSONB[] DEFAULT '{}',
@@ -111,7 +111,7 @@ CREATE TABLE route_requests (
 CREATE TABLE intersections (
     id TEXT PRIMARY KEY,                    -- e.g., "BLR-001"
     name TEXT,
-    geometry POINT(4326) NOT NULL,
+    geometry geometry(POINT, 4326) NOT NULL,
     phase_plan JSONB NOT NULL,              -- current timing plan
     current_phase INT DEFAULT 0,
     phase_start_time TIMESTAMPTZ DEFAULT NOW(),
@@ -128,7 +128,7 @@ CREATE TABLE intersections (
 CREATE TABLE cameras (
     id TEXT PRIMARY KEY,
     name TEXT,
-    geometry POINT(4326) NOT NULL,
+    geometry geometry(POINT, 4326) NOT NULL,
     stream_url TEXT,                        -- RTSP/HLS URL
     stream_type TEXT,                       -- 'rtsp', 'hls', 'mjpeg'
     direction INT,                          -- degrees
@@ -144,7 +144,7 @@ CREATE TABLE alerts (
     severity TEXT NOT NULL,                 -- 'info', 'warning', 'critical', 'emergency'
     title TEXT NOT NULL,
     message TEXT NOT NULL,
-    geometry GEOGRAPHY(POLYGON, 4326),     -- affected area
+    geometry geography(POLYGON, 4326),     -- affected area
     target_roles TEXT[] DEFAULT '{public}', -- who receives: public, emergency, operator
     created_by UUID REFERENCES users(id),
     expires_at TIMESTAMPTZ,

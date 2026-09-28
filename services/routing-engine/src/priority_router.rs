@@ -4,6 +4,7 @@ use geo::{Point, LineString};
 use tracing::{debug, info, warn};
 use uuid::Uuid;
 use chrono::Utc;
+use serde::{Deserialize, Serialize};
 
 use crate::models::*;
 use crate::osrm_client::OsrmClient;

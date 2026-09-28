@@ -5,11 +5,11 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1.38", features = ["full"] }
-tonic = "0.10"
+tonic = { version = "0.10", features = ["transport", "codegen"] }
 prost = "0.12"
 prost-types = "0.12"
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "postgres", "uuid", "chrono", "json", "geometry"] }
-geo = { version = "0.7", features = ["serde", "wkb", "wkt"] }
+sqlx = { git = "https://github.com/launchbadge/sqlx", branch = "main", features = ["runtime-tokio", "tls-rustls", "postgres", "uuid", "chrono", "json"] }
+geo = { version = "0.7" }
 geojson = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -23,6 +23,12 @@ uuid = { version = "1.6", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 dashmap = "5.5"
 parking_lot = "0.12"
+reqwest = { version = "0.12", features = ["json"] }
+tokio-stream = "0.1"
+futures = "0.3"
+tonic-health = "0.10"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs"] }
 
 [build-dependencies]
 tonic-build = "0.10"

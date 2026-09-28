@@ -4,7 +4,7 @@
 -- Live congestion view (real-time)
 CREATE OR REPLACE VIEW live_congestion AS
 SELECT
-    r.id,
+    r.osm_id as id,
     r.osm_id,
     r.geometry,
     r.highway_type,
@@ -30,7 +30,7 @@ FROM road_segments r
 LEFT JOIN LATERAL (
     SELECT speed_kmh, confidence, source, timestamp
     FROM traffic_speeds ts
-    WHERE ts.segment_id = r.id
+    WHERE ts.segment_id = r.osm_id
     ORDER BY ts.timestamp DESC
     LIMIT 1
 ) t ON true;
@@ -169,17 +169,17 @@ WHERE rr.priority_level = 0
   AND rr.status IN ('calculated', 'accepted', 'active')
   AND rr.created_at > NOW() - INTERVAL '24 hours';
 
--- Materialized view for congestion heatmap (refresh every 5 min)
+-- Materialized view for congestion heatmap (refresh every 5 min) - simplified
 CREATE MATERIALIZED VIEW congestion_heatmap AS
-SELECT
-    ST_HexagonGrid(0.002, ST_Expand(ST_Collect(geometry), 0.01)) as hex,
+SELECT 
+    ST_SnapToGrid(geometry, 0.002) as grid_cell,
     AVG(congestion_level) as avg_congestion,
     COUNT(*) as segment_count
 FROM live_congestion
 WHERE last_updated > NOW() - INTERVAL '10 minutes'
-GROUP BY hex;
+GROUP BY grid_cell;
 
-CREATE UNIQUE INDEX idx_congestion_heatmap_hex ON congestion_heatmap (hex);
+CREATE UNIQUE INDEX idx_congestion_heatmap_hex ON congestion_heatmap (grid_cell);
 
 -- Function to refresh congestion heatmap
 CREATE OR REPLACE FUNCTION refresh_congestion_heatmap()

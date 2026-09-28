@@ -123,6 +123,13 @@ enum RouteUpdateType {
   ROUTE_UPDATE_ARRIVED = 4;
 }
 
+// Congestion change notification
+message CongestionChange {
+  int64 segment_id = 1;
+  int32 old_level = 2;
+  int32 new_level = 3;
+}
+
 // Corridor reservation for emergency vehicles
 message CorridorRequest {
   string reservation_id = 1;
@@ -181,4 +188,4 @@ message json_options {
   string value = 1;
 }
 
-message google.protobuf.Empty {}
+import "google/protobuf/empty.proto";

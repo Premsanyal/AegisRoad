@@ -6,12 +6,10 @@ WORKDIR /app
 # Install build dependencies
 RUN apk add --no-cache git make protobuf-dev
 
-# Copy go mod files
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source
+# Copy go mod files and source
+COPY go.mod ./
 COPY . .
+RUN go mod tidy && go mod download
 
 # Build
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o api-gateway ./cmd

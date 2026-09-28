@@ -7,8 +7,8 @@ use chrono::{DateTime, Utc};
 pub struct RouteRequest {
     pub request_id: String,
     pub priority_level: i32,
-    pub origin: Point,
-    pub destination: Point,
+    pub origin: Point<f64>,
+    pub destination: Point<f64>,
     pub vehicle_id: Option<String>,
     pub vehicle_type: Option<String>,
     pub avoid_segments: Vec<i64>,
@@ -81,7 +81,7 @@ pub struct SegmentInfo {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IncidentWarning {
     pub incident_id: String,
-    pub location: Point,
+    pub location: Point<f64>,
     pub incident_type: String,
     pub severity: i32,
     pub description: String,

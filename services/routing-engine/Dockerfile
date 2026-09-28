@@ -1,7 +1,11 @@
 # Build stage
-FROM rust:1.77-slim as builder
+FROM rust:1.82-slim as builder
 
 WORKDIR /app
+
+# Install nightly Rust for edition2024 support
+RUN rustup toolchain install nightly --component rustfmt clippy
+RUN rustup default nightly
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
@@ -11,18 +15,23 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy manifests
-COPY Cargo.toml Cargo.lock ./
+COPY Cargo.toml ./
+
+# Copy proto files for protobuf generation
+COPY proto ./proto
+
+# Copy build.rs for protobuf generation
+COPY build.rs ./
 
 # Create dummy source to cache dependencies
 RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release
+RUN cargo generate-lockfile && cargo build --release
 RUN rm -rf src
 
 # Copy actual source
 COPY src ./src
-COPY proto ./proto
 
-# Build protobuf
+# Build with protobuf generation
 RUN cargo build --release
 
 # Runtime stage

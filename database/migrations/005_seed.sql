@@ -104,7 +104,7 @@ UPDATE road_segments r SET congestion_level = (
         ELSE 5
     END
     FROM traffic_speeds t
-    WHERE t.segment_id = r.id
+    WHERE t.segment_id = r.osm_id
     ORDER BY t.timestamp DESC
     LIMIT 1
 );

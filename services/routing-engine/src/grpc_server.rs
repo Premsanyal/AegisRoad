@@ -5,6 +5,7 @@ use tokio_stream::wrappers::ReceiverStream;
 use uuid::Uuid;
 use chrono::Utc;
 use tracing::{debug, info, warn};
+use geo::{Point, LineString};
 
 use crate::models::*;
 use crate::priority_router::PriorityRouter;
@@ -211,7 +212,7 @@ fn convert_corridor_request(proto_req: CorridorRequest) -> Result<crate::models:
         vehicle_id: proto_req.vehicle_id,
         corridor_path,
         lookahead_meters: proto_req.lookahead_meters,
-        expires_at: chrono::DateTime::from_timestamp_millis(proto_req.expires_at).unwrap_or(Utc::now()),
+        expires_at: chrono::DateTime::from_timestamp_millis(proto_req.expires_at).unwrap_or(chrono::Utc::now()),
         priority_level: proto_req.priority_level,
     })
 }
@@ -234,6 +235,3 @@ fn convert_route_update(update: crate::priority_router::RouteUpdate) -> RouteUpd
         timestamp: update.timestamp,
     }
 }
-
-// Helper to include geo types in proto conversion
-use geo::{Point, LineString};

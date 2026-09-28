@@ -3,14 +3,15 @@ version: '3.8'
 services:
   # Core Infrastructure
   postgres:
-    image: timescale/timescaledb:latest-pg16
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.postgres
     environment:
       POSTGRES_DB: aegisroad
       POSTGRES_USER: aegis
       POSTGRES_PASSWORD: ${DB_PASSWORD:-aegisroad_dev}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./database/migrations:/docker-entrypoint-initdb.d
     ports: ["5432:5432"]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U aegis -d aegisroad"]
